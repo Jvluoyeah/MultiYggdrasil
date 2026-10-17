@@ -10,7 +10,7 @@ public class VersionUtil {
         String profiles,
         String name
     ) {
-        return new Environment(session, services, profiles, name);
+        return new Environment(session, name);
     }
 
     public static int getSize(Object o) {

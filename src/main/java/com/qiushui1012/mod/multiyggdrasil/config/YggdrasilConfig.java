@@ -1,7 +1,6 @@
 package com.qiushui1012.mod.multiyggdrasil.config;
 
 import com.google.common.collect.Lists;
-import com.mojang.authlib.yggdrasil.YggdrasilEnvironment;
 import com.qiushui1012.mod.multiyggdrasil.source.BaseYggdrasilSource;
 import com.qiushui1012.mod.multiyggdrasil.source.BlessingSkinYggdrasilSource;
 import com.qiushui1012.mod.multiyggdrasil.source.OfficialYggdrasilSource;
@@ -21,9 +20,9 @@ public record YggdrasilConfig(List<BaseYggdrasilSource> sources) {
     public static final YggdrasilConfig DEFAULT = new YggdrasilConfig(Lists.newArrayList(
         new OfficialYggdrasilSource(
             "MojangOfficial",
-            YggdrasilEnvironment.PROD.getEnvironment().sessionHost(),
-            YggdrasilEnvironment.PROD.getEnvironment().servicesHost(),
-            YggdrasilEnvironment.PROD.getEnvironment().profilesHost(),
+            OfficialYggdrasilSource.DEFAULT_SESSION_HOST,
+            OfficialYggdrasilSource.DEFAULT_SERVICES_HOST,
+            OfficialYggdrasilSource.DEFAULT_PROFILES_HOST,
             0
         ),
         new BlessingSkinYggdrasilSource("LittleSkin", "https://littleskin.cn/api/yggdrasil/", 1),

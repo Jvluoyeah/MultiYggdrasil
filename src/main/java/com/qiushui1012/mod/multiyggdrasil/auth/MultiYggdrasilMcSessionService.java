@@ -7,9 +7,8 @@ import com.google.common.collect.Iterables;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
-import com.mojang.authlib.Environment;
 import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.HttpAuthenticationService;
+import com.mojang.authlib.HttpDiscoveryService;
 import com.mojang.authlib.SignatureState;
 import com.mojang.authlib.exceptions.AuthenticationException;
 import com.mojang.authlib.exceptions.AuthenticationUnavailableException;
@@ -17,22 +16,22 @@ import com.mojang.authlib.exceptions.MinecraftClientException;
 import com.mojang.authlib.minecraft.InsecurePublicKeyException;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
-import com.mojang.authlib.minecraft.MinecraftSessionService;
+import com.mojang.authlib.minecraft.SessionService;
 import com.mojang.authlib.minecraft.client.MinecraftClient;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
-import com.mojang.authlib.yggdrasil.ProfileActionType;
-import com.mojang.authlib.yggdrasil.ProfileResult;
-import com.mojang.authlib.yggdrasil.ServicesKeySet;
-import com.mojang.authlib.yggdrasil.ServicesKeyType;
-import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
-import com.mojang.authlib.yggdrasil.request.JoinMinecraftServerRequest;
-import com.mojang.authlib.yggdrasil.response.HasJoinedMinecraftServerResponse;
-import com.mojang.authlib.yggdrasil.response.MinecraftProfilePropertiesResponse;
-import com.mojang.authlib.yggdrasil.response.MinecraftTexturesPayload;
-import com.mojang.authlib.yggdrasil.response.ProfileAction;
+import com.mojang.authlib.services.ProfileActionType;
+import com.mojang.authlib.services.ProfileResult;
+import com.mojang.authlib.services.ServicesKeySet;
+import com.mojang.authlib.services.ServicesKeyType;
+import com.mojang.authlib.services.request.JoinMinecraftServerRequest;
+import com.mojang.authlib.services.response.HasJoinedMinecraftServerResponse;
+import com.mojang.authlib.services.response.MinecraftProfilePropertiesResponse;
+import com.mojang.authlib.services.response.MinecraftTexturesPayload;
+import com.mojang.authlib.services.response.ProfileAction;
 import com.mojang.logging.LogUtils;
 import com.mojang.util.UUIDTypeAdapter;
+import com.qiushui1012.mod.multiyggdrasil.source.BaseYggdrasilSource;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -52,7 +51,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
-public class MultiYggdrasilMcSessionService implements MinecraftSessionService {
+public class MultiYggdrasilMcSessionService implements SessionService {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private final List<String> baseUrls = new ArrayList<>();
@@ -72,16 +71,20 @@ public class MultiYggdrasilMcSessionService implements MinecraftSessionService {
             }
         });
 
-    public MultiYggdrasilMcSessionService(final YggdrasilAuthenticationService service, final List<Environment> envs) {
+    public MultiYggdrasilMcSessionService(final MultiYggdrasilAuthService service, final List<BaseYggdrasilSource> sources) {
         client = MinecraftClient.unauthenticated(service.getProxy());
         servicesKeySet = service.getServicesKeySet();
 
-        for (Environment env : envs) {
-            String baseUrl = env.sessionHost() + "/session/minecraft/";
+        for (BaseYggdrasilSource source : sources) {
+            String baseUrl = source.getSessionRoot();
+            if (!baseUrl.endsWith("/")) {
+                baseUrl += "/";
+            }
+            baseUrl += "session/minecraft/";
             baseUrls.add(baseUrl);
 
-            joinUrls.add(HttpAuthenticationService.constantURL(baseUrl + "join"));
-            checkUrls.add(HttpAuthenticationService.constantURL(baseUrl + "hasJoined"));
+            joinUrls.add(HttpDiscoveryService.constantURL(baseUrl + "join"));
+            checkUrls.add(HttpDiscoveryService.constantURL(baseUrl + "hasJoined"));
         }
     }
 
@@ -125,10 +128,9 @@ public class MultiYggdrasilMcSessionService implements MinecraftSessionService {
         }
 
         try {
-            HasJoinedMinecraftServerResponse response;
-            response = null;
+            HasJoinedMinecraftServerResponse response = null;
             for (URL checkUrl : checkUrls) {
-                final URL url = HttpAuthenticationService.concatenateURL(checkUrl, HttpAuthenticationService.buildQuery(arguments));
+                final URL url = HttpDiscoveryService.concatenateURL(checkUrl, HttpDiscoveryService.buildQuery(arguments));
                 HasJoinedMinecraftServerResponse responseCache = client.get(url, HasJoinedMinecraftServerResponse.class);
                 if (responseCache == null) continue;
                 response = responseCache;
@@ -228,8 +230,8 @@ public class MultiYggdrasilMcSessionService implements MinecraftSessionService {
         try {
             MinecraftProfilePropertiesResponse response = null;
             for (String baseUrl : baseUrls) {
-                URL url = HttpAuthenticationService.constantURL(baseUrl + "profile/" + profileId.toString().replace('-', ' '));
-                url = HttpAuthenticationService.concatenateURL(url, "unsigned=" + !requireSecure);
+                URL url = HttpDiscoveryService.constantURL(baseUrl + "profile/" + profileId.toString().replace("-", ""));
+                url = HttpDiscoveryService.concatenateURL(url, "unsigned=" + !requireSecure);
                 MinecraftProfilePropertiesResponse responseCache = client.get(url, MinecraftProfilePropertiesResponse.class);
                 if (responseCache == null) continue;
                 response = responseCache;
@@ -258,4 +260,3 @@ public class MultiYggdrasilMcSessionService implements MinecraftSessionService {
             .collect(Collectors.toSet());
     }
 }
-

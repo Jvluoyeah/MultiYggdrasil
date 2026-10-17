@@ -7,30 +7,7 @@ plugins {
 
 preprocess {
     strictExtraMappings = false
-
-    var mc12110_fabric = createNode("1.21.10-fabric", 1_21_10, 'mojang')
-    var mc260102_fabric = createNode("26.1.2-fabric", 26_01_02, 'mojang')
-    var mc260200_fabric = createNode("26.2-fabric", 26_02_00, 'mojang')
-
-    mc12110_fabric.link(mc260102_fabric, null)
-    mc260102_fabric.link(mc260200_fabric, null)
-
-    var mc12110_forge = createNode("1.21.10-forge", 1_21_10, 'mojang')
-    var mc260102_forge = createNode("26.1.2-forge", 26_01_02, 'mojang')
-    var mc260200_forge = createNode("26.2-forge", 26_02_00, 'mojang')
-
-    mc12110_fabric.link(mc12110_forge, null)
-    mc12110_forge.link(mc260102_forge, null)
-    mc260102_forge.link(mc260200_forge, null)
-
-    var mc12110_neoforge = createNode("1.21.10-neoforge", 1_21_10, 'mojang')
-    var mc260102_neoforge = createNode("26.1.2-neoforge", 26_01_02, 'mojang')
-    var mc260200_neoforge = createNode("26.2-neoforge", 26_02_00, 'mojang')
-
-    mc12110_forge.link(mc12110_neoforge, null)
-    mc12110_neoforge.link(mc260102_neoforge, null)
-    mc260102_neoforge.link(mc260200_neoforge, null)
-
+    var mc260300_fabric = createNode("26.3-fabric", 26_03_00, 'mojang')
     for (final def node in getNodes()) {
         findProject(node.project).ext.mcVersion = node.mcVersion
         var modPlatform = "none"

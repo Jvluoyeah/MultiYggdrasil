@@ -3,16 +3,17 @@ package com.qiushui1012.mod.multiyggdrasil.auth;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
-import com.mojang.authlib.Environment;
 import com.mojang.authlib.GameProfileRepository;
-import com.mojang.authlib.HttpAuthenticationService;
+import com.mojang.authlib.HttpDiscoveryService;
 import com.mojang.authlib.ProfileLookupCallback;
 import com.mojang.authlib.exceptions.MinecraftClientException;
 import com.mojang.authlib.minecraft.client.MinecraftClient;
-import com.mojang.authlib.yggdrasil.ProfileNotFoundException;
-import com.mojang.authlib.yggdrasil.response.NameAndId;
-import com.mojang.authlib.yggdrasil.response.ProfileSearchResultsResponse;
+import com.mojang.authlib.services.ProfileNotFoundException;
+import com.mojang.authlib.services.response.NameAndId;
+import com.mojang.authlib.services.response.ProfileSearchResultsResponse;
 import com.mojang.logging.LogUtils;
+import com.qiushui1012.mod.multiyggdrasil.source.BaseYggdrasilSource;
+import com.qiushui1012.mod.multiyggdrasil.source.YggdrasilSourceType;
 import org.slf4j.Logger;
 
 import java.net.Proxy;
@@ -38,11 +39,20 @@ public class MultiYggdrasilGameProfileRepo implements GameProfileRepository {
     private final List<String> searchPageUrls = new ArrayList<>();
     private final List<String> nameLookupUrls = new ArrayList<>();
 
-    public MultiYggdrasilGameProfileRepo(Proxy proxy, List<Environment> envs) {
+    public MultiYggdrasilGameProfileRepo(Proxy proxy, List<BaseYggdrasilSource> sources) {
         this.client = MinecraftClient.unauthenticated(proxy);
-        for (Environment env : envs) {
-            this.searchPageUrls.add(env.profilesHost() + "/minecraft/profile/lookup/bulk/byname");
-            this.nameLookupUrls.add(env.profilesHost() + "/minecraft/profile/lookup/name/");
+        for (BaseYggdrasilSource source : sources) {
+            String profilesRoot = source.getProfilesRoot();
+            if (profilesRoot.endsWith("/")) {
+                profilesRoot = profilesRoot.substring(0, profilesRoot.length() - 1);
+            }
+            if (source.getType() == YggdrasilSourceType.OFFICIAL) {
+                this.searchPageUrls.add(profilesRoot + "/profiles/minecraft");
+                this.nameLookupUrls.add(profilesRoot + "/users/profiles/minecraft/");
+            } else {
+                this.searchPageUrls.add(profilesRoot + "/minecraft");
+                this.nameLookupUrls.add(profilesRoot + "/minecraft/");
+            }
         }
     }
 
@@ -100,7 +110,7 @@ public class MultiYggdrasilGameProfileRepo implements GameProfileRepository {
 
                 try {
                     final ProfileSearchResultsResponse response = client.post(
-                        HttpAuthenticationService.constantURL(searchPageUrl + "minecraft"),
+                        HttpDiscoveryService.constantURL(searchPageUrl),
                         request,
                         ProfileSearchResultsResponse.class
                     );
@@ -157,7 +167,7 @@ public class MultiYggdrasilGameProfileRepo implements GameProfileRepository {
         for (String nameLookupUrl : this.nameLookupUrls) {
             try {
                 return Optional.ofNullable(client.get(
-                    HttpAuthenticationService.constantURL(nameLookupUrl + name.toLowerCase(Locale.ROOT)),
+                    HttpDiscoveryService.constantURL(nameLookupUrl + name.toLowerCase(Locale.ROOT)),
                     NameAndId.class
                 ));
             } catch (final MinecraftClientException ignored) {

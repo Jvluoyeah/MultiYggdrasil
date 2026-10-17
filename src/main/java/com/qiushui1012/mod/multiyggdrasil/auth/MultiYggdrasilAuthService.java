@@ -1,68 +1,58 @@
 package com.qiushui1012.mod.multiyggdrasil.auth;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
-import com.mojang.authlib.Environment;
-import com.mojang.authlib.EnvironmentParser;
 import com.mojang.authlib.GameProfileRepository;
-import com.mojang.authlib.minecraft.MinecraftSessionService;
+import com.mojang.authlib.minecraft.SessionService;
 import com.mojang.authlib.minecraft.UserApiService;
-import com.mojang.authlib.yggdrasil.ServicesKeySet;
-import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
-import com.mojang.authlib.yggdrasil.YggdrasilEnvironment;
+import com.mojang.authlib.services.ServicesKeySet;
+import com.mojang.logging.LogUtils;
 import com.qiushui1012.mod.multiyggdrasil.MultiYggdrasil;
 import com.qiushui1012.mod.multiyggdrasil.source.BaseYggdrasilSource;
 import lombok.Getter;
+import org.slf4j.Logger;
 
 import java.net.Proxy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import com.mojang.logging.LogUtils;
-import org.slf4j.Logger;
-
-public class MultiYggdrasilAuthService extends YggdrasilAuthenticationService {
+public class MultiYggdrasilAuthService {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private final List<Environment> environments;
+    @Getter
+    private final Proxy proxy;
+    private final List<BaseYggdrasilSource> sources;
     @Getter
     private final ServicesKeySet servicesKeySet = x -> List.of(new MultiYggdrasilServicesKeyInfo());
 
     public MultiYggdrasilAuthService(final Proxy proxy) {
-        this(proxy, determineEnvironment());
+        this(proxy, determineSources());
     }
 
-    private MultiYggdrasilAuthService(final Proxy proxy, List<Environment> environments) {
-        super(proxy);
-        this.environments = environments;
-        LOGGER.info("Environments: {}", environments);
+    public MultiYggdrasilAuthService(final Proxy proxy, List<BaseYggdrasilSource> sources) {
+        this.proxy = proxy != null ? proxy : Proxy.NO_PROXY;
+        this.sources = sources;
+        LOGGER.info("Yggdrasil Sources: {}", sources);
     }
 
-    private static List<Environment> determineEnvironment() {
+    private static List<BaseYggdrasilSource> determineSources() {
         List<BaseYggdrasilSource> envs = MultiYggdrasil.SERVERS_CONFIG.sources();
-        if (envs.isEmpty()) return Lists.newArrayList(
-            EnvironmentParser.getEnvironmentFromProperties().orElse(YggdrasilEnvironment.PROD.getEnvironment())
-        );
-        Collections.sort(envs);
-        List<Environment> result = new ArrayList<>();
-        for (BaseYggdrasilSource source : envs) {
-            result.add(source.toEnvironment());
+        if (envs.isEmpty()) {
+            return List.of();
         }
+        List<BaseYggdrasilSource> result = new ArrayList<>(envs);
+        Collections.sort(result);
         return ImmutableList.copyOf(result);
     }
 
-    @Override
     public GameProfileRepository createProfileRepository() {
-        return new MultiYggdrasilGameProfileRepo(this.getProxy(), environments);
+        return new MultiYggdrasilGameProfileRepo(this.getProxy(), sources);
     }
 
-    @Override
-    public MinecraftSessionService createMinecraftSessionService() {
-        return new MultiYggdrasilMcSessionService(this, environments);
+    public SessionService createMinecraftSessionService() {
+        return new MultiYggdrasilMcSessionService(this, sources);
     }
 
-    @Override
     public UserApiService createUserApiService(final String accessToken) {
         return UserApiService.OFFLINE;
     }

@@ -1,6 +1,5 @@
 package com.qiushui1012.mod.multiyggdrasil.config;
 
-import com.mojang.authlib.yggdrasil.YggdrasilEnvironment;
 import com.qiushui1012.mod.multiyggdrasil.MultiYggdrasil;
 import com.qiushui1012.mod.multiyggdrasil.source.BaseYggdrasilSource;
 import com.qiushui1012.mod.multiyggdrasil.source.BlessingSkinYggdrasilSource;
@@ -109,7 +108,7 @@ public class ConfigAgent {
                 case OFFICIAL:
                     String sessionHost = config.get("sessionHost");
                     if (sessionHost == null) {
-                        sessionHost = YggdrasilEnvironment.PROD.getEnvironment().sessionHost();
+                        sessionHost = OfficialYggdrasilSource.DEFAULT_SESSION_HOST;
                     }
                     if (sessionHost.endsWith("/")) {
                         sessionHost = sessionHost.substring(0, sessionHost.length() - 1);
@@ -117,7 +116,7 @@ public class ConfigAgent {
 
                     String servicesHost = config.get("servicesHost");
                     if (servicesHost == null) {
-                        servicesHost = YggdrasilEnvironment.PROD.getEnvironment().servicesHost();
+                        servicesHost = OfficialYggdrasilSource.DEFAULT_SERVICES_HOST;
                     }
                     if (servicesHost.endsWith("/")) {
                         servicesHost = servicesHost.substring(0, servicesHost.length() - 1);
@@ -125,7 +124,7 @@ public class ConfigAgent {
 
                     String profilesHost = config.get("profilesHost");
                     if (profilesHost == null) {
-                        profilesHost = YggdrasilEnvironment.PROD.getEnvironment().profilesHost();
+                        profilesHost = OfficialYggdrasilSource.DEFAULT_PROFILES_HOST;
                     }
                     if (profilesHost.endsWith("/")) {
                         profilesHost = profilesHost.substring(0, profilesHost.length() - 1);
