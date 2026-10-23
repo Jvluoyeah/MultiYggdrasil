@@ -37,4 +37,8 @@ public record YggdrasilConfig(List<BaseYggdrasilSource> sources) {
     public static YggdrasilConfig load() {
         return ConfigAgent.parse(PATH);
     }
+
+    public static YggdrasilConfig loadForClient() {
+        return ConfigAgent.parse(PATH, false);
+    }
 }

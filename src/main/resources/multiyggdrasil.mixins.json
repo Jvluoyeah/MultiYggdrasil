@@ -3,7 +3,13 @@
   "package": "com.qiushui1012.mod.multiyggdrasil.mixin",
   "mixins": [
     "LogicalServerSaveMixin",
-    "PhysicalServerStartMixin"
+    "PhysicalServerStartMixin",
+    "ServerPlayerTabSourceDisplayMixin",
+    "ChatTypeSourceDisplayMixin",
+    "ServerScoreboardSourceDisplayMixin"
+  ],
+  "client": [
+    "client.SkinTextureMixin"
   ],
   "compatibilityLevel": "JAVA_21",
   "injectors": {

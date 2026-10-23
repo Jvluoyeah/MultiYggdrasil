@@ -4,6 +4,7 @@ import com.mojang.authlib.GameProfileRepository;
 import com.mojang.authlib.minecraft.SessionService;
 import com.mojang.authlib.services.MinecraftServicesDiscoveryService;
 import com.qiushui1012.mod.multiyggdrasil.auth.MultiYggdrasilAuthService;
+import com.qiushui1012.mod.multiyggdrasil.skin.MineSkinBridge;
 import net.minecraft.server.Main;
 import net.minecraft.server.Services;
 import net.minecraft.server.players.CachedUserNameToIdResolver;
@@ -25,6 +26,7 @@ abstract class PhysicalServerStartMixin {
     )
     private static Services createBetter(MinecraftServicesDiscoveryService discoveryService, File file) {
         MultiYggdrasilAuthService authService = new MultiYggdrasilAuthService(discoveryService.getProxy());
+        MineSkinBridge.instance();
         SessionService sessionService = authService.createMinecraftSessionService();
         GameProfileRepository profileRepository = authService.createProfileRepository();
         CachedUserNameToIdResolver nameToIdCache = new CachedUserNameToIdResolver(profileRepository, new File(file, "usercache.json"));

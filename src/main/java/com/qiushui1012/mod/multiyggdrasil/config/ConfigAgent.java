@@ -1,6 +1,7 @@
 package com.qiushui1012.mod.multiyggdrasil.config;
 
-import com.qiushui1012.mod.multiyggdrasil.MultiYggdrasil;
+import com.mojang.logging.LogUtils;
+import org.slf4j.Logger;
 import com.qiushui1012.mod.multiyggdrasil.source.BaseYggdrasilSource;
 import com.qiushui1012.mod.multiyggdrasil.source.BlessingSkinYggdrasilSource;
 import com.qiushui1012.mod.multiyggdrasil.source.OfficialYggdrasilSource;
@@ -30,6 +31,8 @@ import net.fabricmc.loader.api.FabricLoader;
 //#endif
 
 public class ConfigAgent {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     public static void save(Path configPath, YggdrasilConfig config) {
         tryMkConfigDirs();
         try (BufferedWriter writer = Files.newBufferedWriter(configPath, StandardCharsets.UTF_8)) {
@@ -44,9 +47,9 @@ public class ConfigAgent {
                     writer.newLine();
                 }
             }
-            MultiYggdrasil.LOGGER.info("Successfully saved config");
+            LOGGER.info("Successfully saved config");
         } catch (IOException e) {
-            MultiYggdrasil.LOGGER.warn("Cannot save config to {}.", configPath, e);
+            LOGGER.warn("Cannot save config to {}.", configPath, e);
         }
     }
 
@@ -55,18 +58,22 @@ public class ConfigAgent {
             !FabricLoader.getInstance().getConfigDir().toFile().exists()
             && !FabricLoader.getInstance().getConfigDir().toFile().mkdirs()
         ) {
-            MultiYggdrasil.LOGGER.warn("Cannot mk config dirs. Path: {}", FabricLoader.getInstance().getConfigDir());
+            LOGGER.warn("Cannot mk config dirs. Path: {}", FabricLoader.getInstance().getConfigDir());
         }
     }
 
     public static YggdrasilConfig parse(Path configPath) {
+        return parse(configPath, true);
+    }
+
+    static YggdrasilConfig parse(Path configPath, boolean fetchPublicKeys) {
         Map<String, Map<String, String>> configRaw;
         try {
             configRaw = IniParser.parseRaw(configPath);
         } catch (IOException | IllegalArgumentException e) {
-            MultiYggdrasil.LOGGER.warn("Cannot load config. Use default config.", e);
+            LOGGER.warn("Cannot load config. Use default config.", e);
             for (BaseYggdrasilSource source : YggdrasilConfig.DEFAULT.sources()) {
-                if (source instanceof BlessingSkinYggdrasilSource blessing) {
+                if (fetchPublicKeys && source instanceof BlessingSkinYggdrasilSource blessing) {
                     ConfigAgent.addPublicKey(blessing.getName(), blessing.getApiRoot());
                 }
             }
@@ -76,31 +83,31 @@ public class ConfigAgent {
         List<BaseYggdrasilSource> sources = new ArrayList<>();
         for (String name : configRaw.keySet()) {
             Map<String, String> config = configRaw.get(name);
-            if (name.contains(".")) MultiYggdrasil.LOGGER.warn("Yggdrasil source key should not contains '.', got {}", name);
+            if (name.contains(".")) LOGGER.warn("Yggdrasil source key should not contains '.', got {}", name);
 
             String typeRaw = config.get("type");
             if (typeRaw == null) {
-                MultiYggdrasil.LOGGER.warn("The type of Yggdrasil source {} is not set. Skipped.", name);
+                LOGGER.warn("The type of Yggdrasil source {} is not set. Skipped.", name);
                 continue;
             }
             YggdrasilSourceType type;
             try {
                 type = YggdrasilSourceType.valueOf(typeRaw.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
-                MultiYggdrasil.LOGGER.warn("The value of Yggdrasil source {}'s type is not valid. Skipped.", name, e);
+                LOGGER.warn("The value of Yggdrasil source {}'s type is not valid. Skipped.", name, e);
                 continue;
             }
 
             String ordinalRaw = config.get("ordinal");
             if (ordinalRaw == null) {
-                MultiYggdrasil.LOGGER.warn("The ordinal of Yggdrasil source {} is not set. Skipped.", name);
+                LOGGER.warn("The ordinal of Yggdrasil source {} is not set. Skipped.", name);
                 continue;
             }
             int ordinal;
             try {
                 ordinal = Integer.parseInt(ordinalRaw);
             } catch (NumberFormatException e) {
-                MultiYggdrasil.LOGGER.warn("The ordinal of Yggdrasil source {} cannot be lesser than 0. Skipped.", name, e);
+                LOGGER.warn("The ordinal of Yggdrasil source {} cannot be lesser than 0. Skipped.", name, e);
                 continue;
             }
 
@@ -141,13 +148,13 @@ public class ConfigAgent {
                 case BLESSING_SKIN:
                     String apiRoot = config.get("apiRoot");
                     if (apiRoot == null) {
-                        MultiYggdrasil.LOGGER.warn("The apiRoot of BlessingSkin Yggdrasil source {} is not set. Skipped.", name);
+                        LOGGER.warn("The apiRoot of BlessingSkin Yggdrasil source {} is not set. Skipped.", name);
                         continue;
                     }
                     if (!apiRoot.endsWith("/")) {
                         apiRoot = apiRoot.concat("/");
                     }
-                    ConfigAgent.addPublicKey(name, apiRoot);
+                    if (fetchPublicKeys) ConfigAgent.addPublicKey(name, apiRoot);
                     sources.add(new BlessingSkinYggdrasilSource(name, apiRoot, ordinal));
             }
         }
@@ -157,10 +164,10 @@ public class ConfigAgent {
     private static void addPublicKey(String name, String blessingApiRoot) {
         Optional<PublicKey> key = ParseUtil.getPublicKey(blessingApiRoot);
         if (key.isEmpty()) {
-            MultiYggdrasil.LOGGER.warn("Cannot fetch key from source {}.", name);
+            LOGGER.warn("Cannot fetch key from source {}.", name);
             return;
         }
         MultiYggdrasilServicesKeyInfo.PUBLIC_KEYS.add(key.get());
-        MultiYggdrasil.LOGGER.debug("Successfully fetched public key from source {}.", name);
+        LOGGER.debug("Successfully fetched public key from source {}.", name);
     }
 }

@@ -32,6 +32,8 @@ import com.mojang.authlib.services.response.ProfileAction;
 import com.mojang.logging.LogUtils;
 import com.mojang.util.UUIDTypeAdapter;
 import com.qiushui1012.mod.multiyggdrasil.source.BaseYggdrasilSource;
+import com.qiushui1012.mod.multiyggdrasil.source.YggdrasilSourceType;
+import com.qiushui1012.mod.multiyggdrasil.skin.MineSkinBridge;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
@@ -57,6 +59,7 @@ public class MultiYggdrasilMcSessionService implements SessionService {
     private final List<String> baseUrls = new ArrayList<>();
     private final List<URL> joinUrls = new ArrayList<>();
     private final List<URL> checkUrls = new ArrayList<>();
+    private final List<BaseYggdrasilSource> sources;
 
     private final MinecraftClient client;
     private final ServicesKeySet servicesKeySet;
@@ -74,6 +77,7 @@ public class MultiYggdrasilMcSessionService implements SessionService {
     public MultiYggdrasilMcSessionService(final MultiYggdrasilAuthService service, final List<BaseYggdrasilSource> sources) {
         client = MinecraftClient.unauthenticated(service.getProxy());
         servicesKeySet = service.getServicesKeySet();
+        this.sources = List.copyOf(sources);
 
         for (BaseYggdrasilSource source : sources) {
             String baseUrl = source.getSessionRoot();
@@ -129,16 +133,25 @@ public class MultiYggdrasilMcSessionService implements SessionService {
 
         try {
             HasJoinedMinecraftServerResponse response = null;
-            for (URL checkUrl : checkUrls) {
+            BaseYggdrasilSource authenticatedSource = null;
+            for (int index = 0; index < checkUrls.size(); index++) {
+                final URL checkUrl = checkUrls.get(index);
                 final URL url = HttpDiscoveryService.concatenateURL(checkUrl, HttpDiscoveryService.buildQuery(arguments));
                 HasJoinedMinecraftServerResponse responseCache = client.get(url, HasJoinedMinecraftServerResponse.class);
                 if (responseCache == null) continue;
                 response = responseCache;
+                authenticatedSource = sources.get(index);
                 break;
             }
 
             if (response != null && response.id() != null) {
-                final GameProfile result = new GameProfile(response.id(), profileName, Objects.requireNonNullElse(response.properties(), PropertyMap.EMPTY));
+                PropertyMap properties = AuthenticatedSource.forSuccessfulLogin(
+                    Objects.requireNonNullElse(response.properties(), PropertyMap.EMPTY), authenticatedSource
+                );
+                if (authenticatedSource.getType() == YggdrasilSourceType.BLESSING_SKIN) {
+                    properties = MineSkinBridge.instance().bridge(properties);
+                }
+                final GameProfile result = new GameProfile(response.id(), profileName, properties);
 
                 final Set<ProfileActionType> profileActions = extractProfileActionTypes(response.profileActions());
                 return new ProfileResult(result, profileActions);
@@ -243,7 +256,10 @@ public class MultiYggdrasilMcSessionService implements SessionService {
                 return null;
             }
 
-            final GameProfile profile = response.profile();
+            final GameProfile fetchedProfile = response.profile();
+            final PropertyMap properties = AuthenticatedSource.withoutSource(fetchedProfile.properties());
+            final GameProfile profile = properties == fetchedProfile.properties() ? fetchedProfile
+                : new GameProfile(fetchedProfile.id(), fetchedProfile.name(), properties);
             final Set<ProfileActionType> profileActions = extractProfileActionTypes(response.profileActions());
 
             LOGGER.debug("Successfully fetched profile properties for {}", profile);
